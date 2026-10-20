@@ -4,8 +4,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDataContext>();
 var app = builder.Build();
 
-app.MapGet("/", () => "Hello World!");
-
 app.MapPost("/api/folha/cadastrar", ([FromBody] FolhaPagamento? folha, [FromServices] AppDataContext ctx) => {
     if (folha == null) {
         return Results.BadRequest("Informações inválidas\n");
