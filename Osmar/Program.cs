@@ -22,7 +22,7 @@ app.MapPost("/api/folha/cadastrar", ([FromBody] FolhaPagamento? folha, [FromServ
     var folhaConflito = ctx.FolhaPagamento.Any(
         f => f.Cpf == folha.Cpf && f.Mes == folha.Mes && f.Ano == folha.Ano
     );
-    if (folhaConflito != null) {
+    if (folhaConflito) {
         return Results.BadRequest("Folha já existe para o CPF, mês e ano informados\n");
     }
 
@@ -33,12 +33,47 @@ app.MapPost("/api/folha/cadastrar", ([FromBody] FolhaPagamento? folha, [FromServ
     return Results.Created("", folha);
 });
 
-app.MapGet("/api/folha/listar", () => "Lista");
+app.MapGet("/api/folha/listar", ([FromServices] AppDataContext ctx) => {
+    if (ctx.FolhaPagamento.FirstOrDefault() == null) {
+        return Results.NotFound("Nenhuma folha encontrada\n");
+    }
 
-app.MapGet("/api/folha/buscar/{cpf}/{mes}/{ano}", () => "Busca");
+    return Results.Ok(ctx.FolhaPagamento);
+});
 
-app.MapDelete("/api/folha/remover/{cpf}/{mes}/{ano}", () => "Remoção");
+app.MapGet("/api/folha/buscar/{cpf}/{mes}/{ano}", ([FromServices] AppDataContext ctx, [FromRoute] string cpf, [FromRoute] int mes, [FromRoute] int ano) => {
+    var folha = ctx.FolhaPagamento.FirstOrDefault(f => f.Cpf == cpf && f.Mes == mes && f.Ano == ano);
+    if (folha == null) {
+        return Results.NotFound("Folha não encontrada\n");
+    }
 
-app.MapGet("/api/folha/total-liquido", () => "Total");
+    return Results.Ok(folha);
+});
+
+app.MapDelete("/api/folha/remover/{cpf}/{mes}/{ano}", ([FromServices] AppDataContext ctx, [FromRoute] string cpf, [FromRoute] int mes, [FromRoute] int ano) => {
+    var folha = ctx.FolhaPagamento.FirstOrDefault(f => f.Cpf == cpf && f.Mes == mes && f.Ano == ano);
+    if (folha == null) {
+        return Results.NotFound("Folha não encontrada\n");
+    }
+
+    ctx.FolhaPagamento.Remove(folha);
+
+    ctx.SaveChanges();
+
+    return Results.NoContent();
+});
+
+app.MapGet("/api/folha/total-liquido", ([FromServices] AppDataContext ctx) => {
+    if (ctx.FolhaPagamento.FirstOrDefault() == null) {
+        return Results.NotFound("Nenhuma folha encontrada\n");
+    }
+    
+    double total = 0;
+    foreach (var f in ctx.FolhaPagamento) {
+        total += f.SalarioLiquido;
+    }
+
+    return Results.Ok($"{total}");
+});
 
 app.Run();
